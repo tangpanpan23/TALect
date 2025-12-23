@@ -81,6 +81,25 @@ go run cmd/server/main.go
 curl http://localhost:8080/health
 ```
 
+### MVP演示
+
+启动服务器后，运行演示脚本验证所有核心功能：
+
+```bash
+# 进入项目目录
+cd future-mcp-server
+
+# 运行MVP功能演示
+./demo.sh
+```
+
+演示脚本将自动测试：
+- ✅ MCP协议初始化
+- ✅ 工具列表获取
+- ✅ 教学材料搜索
+- ✅ 素材详情获取
+- ✅ 教案自动生成
+
 ## 💡 核心价值主张
 
 ### 1. **内容独家性**

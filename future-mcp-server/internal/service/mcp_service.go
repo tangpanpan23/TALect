@@ -506,7 +506,13 @@ func (s *MCPService) handleSearchMaterials(ctx *types.ToolContext, args interfac
 		Limit  int      `json:"limit,omitempty"`
 	}
 
-	if err := json.Unmarshal([]byte(fmt.Sprintf("%v", args)), &params); err != nil {
+	// 直接将args转换为JSON并解析
+	argsData, err := json.Marshal(args)
+	if err != nil {
+		return nil, fmt.Errorf("invalid parameters: %w", err)
+	}
+
+	if err := json.Unmarshal(argsData, &params); err != nil {
 		return nil, fmt.Errorf("invalid parameters: %w", err)
 	}
 
@@ -567,11 +573,68 @@ func (s *MCPService) handleGetRecommendedMaterials(ctx *types.ToolContext, args 
 }
 
 func (s *MCPService) handleGetMaterialDetail(ctx *types.ToolContext, args interface{}) (*types.ToolsCallResponse, error) {
+	// 解析参数
+	var params struct {
+		MaterialID string `json:"material_id"`
+	}
+
+	argsData, err := json.Marshal(args)
+	if err != nil {
+		return nil, fmt.Errorf("invalid parameters: %w", err)
+	}
+
+	if err := json.Unmarshal(argsData, &params); err != nil {
+		return nil, fmt.Errorf("invalid parameters: %w", err)
+	}
+
+	if params.MaterialID == "" {
+		return nil, fmt.Errorf("material_id is required")
+	}
+
+	// 解析素材ID
+	materialID, err := uuid.Parse(params.MaterialID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid material_id format: %w", err)
+	}
+
+	// 调用素材服务获取详情
+	detail, err := s.config.MaterialService.GetMaterialDetail(ctx.UserID, materialID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 格式化响应
+	response := fmt.Sprintf(`素材详情：
+标题: %s
+描述: %s
+类型: %s
+年级: %v
+学科: %s
+难度: %s
+时长: %s
+查看次数: %d
+评分: %.1f (%d人评价)
+标签: %v
+教学目标: %v`,
+		detail.TeachingMaterial.Title,
+		detail.TeachingMaterial.Description,
+		detail.TeachingMaterial.Type,
+		detail.TeachingMaterial.GradeLevels,
+		detail.TeachingMaterial.Subject,
+		detail.TeachingMaterial.Difficulty,
+		formatDuration(detail.TeachingMaterial.Metadata.Duration),
+		detail.TeachingMaterial.Statistics.ViewCount,
+		detail.TeachingMaterial.Statistics.AverageRating,
+		detail.TeachingMaterial.Statistics.RatingCount,
+		detail.TeachingMaterial.Tags,
+		detail.TeachingMaterial.CurriculumAlignment.Objectives,
+	)
+
 	return &types.ToolsCallResponse{
 		Content: []types.Content{
 			{
 				Type: "text",
-				Text: "素材详情获取功能正在开发中...",
+				Text: response,
 			},
 		},
 		IsError: false,
@@ -591,11 +654,46 @@ func (s *MCPService) handleGetRelatedMaterials(ctx *types.ToolContext, args inte
 }
 
 func (s *MCPService) handleGenerateLessonPlan(ctx *types.ToolContext, args interface{}) (*types.ToolsCallResponse, error) {
+	// 解析参数
+	var params struct {
+		MaterialIDs []string `json:"material_ids"`
+		Objectives  []string `json:"objectives"`
+		Grade       string   `json:"grade"`
+		StudentLevel string  `json:"student_level"`
+		Duration    int      `json:"duration"`
+	}
+
+	argsData, err := json.Marshal(args)
+	if err != nil {
+		return nil, fmt.Errorf("invalid parameters: %w", err)
+	}
+
+	if err := json.Unmarshal(argsData, &params); err != nil {
+		return nil, fmt.Errorf("invalid parameters: %w", err)
+	}
+
+	if len(params.MaterialIDs) == 0 || len(params.Objectives) == 0 {
+		return nil, fmt.Errorf("material_ids and objectives are required")
+	}
+
+	// 解析素材ID列表
+	var materialIDs []uuid.UUID
+	for _, idStr := range params.MaterialIDs {
+		id, err := uuid.Parse(idStr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid material_id format: %s", idStr)
+		}
+		materialIDs = append(materialIDs, id)
+	}
+
+	// 基于学而思教研标准生成教案
+	lessonPlan := s.generateLessonPlan(materialIDs, params.Objectives, params.Grade, params.StudentLevel, params.Duration)
+
 	return &types.ToolsCallResponse{
 		Content: []types.Content{
 			{
 				Type: "text",
-				Text: "教案生成功能正在开发中...",
+				Text: lessonPlan,
 			},
 		},
 		IsError: false,
@@ -793,4 +891,103 @@ func convertToGradeLevels(grades []string) []types.GradeLevel {
 		result[i] = types.GradeLevel(grade)
 	}
 	return result
+}
+
+// formatDuration 格式化时长
+func formatDuration(duration *int) string {
+	if duration == nil {
+		return "未知"
+	}
+	minutes := *duration / 60
+	if minutes < 60 {
+		return fmt.Sprintf("%d分钟", minutes)
+	}
+	hours := minutes / 60
+	remainingMinutes := minutes % 60
+	return fmt.Sprintf("%d小时%d分钟", hours, remainingMinutes)
+}
+
+// generateLessonPlan 基于学而思教研标准生成教案
+func (s *MCPService) generateLessonPlan(materialIDs []uuid.UUID, objectives []string, grade, studentLevel string, duration int) string {
+	// 获取素材信息（简化实现，这里只用第一个素材）
+	var mainMaterial *types.TeachingMaterial
+	if len(materialIDs) > 0 {
+		if material, err := s.config.MaterialService.GetMaterialDetail(uuid.Nil, materialIDs[0]); err == nil {
+			mainMaterial = material.TeachingMaterial
+		}
+	}
+
+	// 基于学而思5E教学模型生成教案
+	lessonPlan := fmt.Sprintf(`# 学而思教研标准教案
+
+## 基本信息
+- **年级**: %s
+- **学生水平**: %s
+- **总时长**: %d分钟
+- **教学模式**: 线上直播 + 互动练习
+
+## 教学目标
+`, grade, studentLevel, duration)
+
+	for i, obj := range objectives {
+		lessonPlan += fmt.Sprintf("%d. %s\n", i+1, obj)
+	}
+
+	lessonPlan += `
+## 教学流程 (5E模型)
+
+### 1. Engage (激发兴趣) - 5分钟
+- **教学活动**: 通过实际问题引入概念
+- **互动方式**: 学生分享相关生活经验
+- **预期效果**: 激发学习兴趣，建立情感连接
+
+### 2. Explore (自主探索) - 15分钟
+- **教学活动**: 学生自主探索和发现规律
+- **材料使用**: `
+
+	if mainMaterial != nil {
+		lessonPlan += fmt.Sprintf("%s (%s)", mainMaterial.Title, mainMaterial.Type)
+	} else {
+		lessonPlan += "教学演示视频"
+	}
+
+	lessonPlan += `
+- **分组活动**: 小组讨论和初步尝试
+- **教师指导**: 巡视指导，及时干预
+
+### 3. Explain (概念讲解) - 10分钟
+- **教学重点**: 清晰阐述核心概念和原理
+- **板书设计**: 重点概念和公式突出显示
+- **举例说明**: 结合实际生活案例
+- **常见问题**: 解答学生疑惑
+
+### 4. Elaborate (深化应用) - 10分钟
+- **练习巩固**: 分层练习，针对不同水平
+- **应用拓展**: 实际问题解决
+- **思维训练**: 培养解题思维和方法
+
+### 5. Evaluate (效果评估) - 5分钟
+- ** formative 评价**: 过程性评价
+- ** summative 评价**: 学习效果检查
+- **反馈收集**: 学生学习感受和建议
+
+## 教学资源
+- **主教材**: 学而思同步教材
+- **辅助材料**: 互动练习册
+- **技术工具**: 智能白板 + 在线练习平台
+
+## 教学评价标准
+- **知识掌握**: 能够正确理解和应用概念
+- **技能培养**: 具备基本的解题能力和思维方法
+- **情感态度**: 对学习产生兴趣，形成良好学习习惯
+
+## 注意事项
+- 根据学生实际反馈调整教学节奏
+- 注重个别化指导，关注学困生
+- 做好教学反思，为下次教学改进提供依据
+
+---
+*本教案基于学而思教研标准自动生成，可根据实际教学情况进行调整*`
+
+	return lessonPlan
 }

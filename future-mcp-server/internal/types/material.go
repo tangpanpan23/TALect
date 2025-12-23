@@ -10,13 +10,15 @@ import (
 type MaterialType string
 
 const (
-	MaterialTypeVideo      MaterialType = "video"
-	MaterialTypePPT        MaterialType = "ppt"
-	MaterialTypePDF        MaterialType = "pdf"
-	MaterialTypeExercise   MaterialType = "exercise"
-	MaterialTypeLessonPlan MaterialType = "lesson_plan"
-	MaterialTypeAudio      MaterialType = "audio"
-	MaterialTypeImage      MaterialType = "image"
+	MaterialTypeVideo        MaterialType = "video"
+	MaterialTypePPT          MaterialType = "ppt"
+	MaterialTypePDF          MaterialType = "pdf"
+	MaterialTypeExercise     MaterialType = "exercise"
+	MaterialTypeLessonPlan   MaterialType = "lesson_plan"
+	MaterialTypeAudio        MaterialType = "audio"
+	MaterialTypeImage        MaterialType = "image"
+	MaterialTypeInteractive  MaterialType = "interactive"
+	MaterialTypeDocument     MaterialType = "document"
 )
 
 // GradeLevel 年级枚举
@@ -70,6 +72,7 @@ const (
 	UsageTypeEmbed      UsageType = "embed"
 	UsageTypeModify     UsageType = "modify"
 	UsageTypeDistribute UsageType = "distribute"
+	UsageTypeInteractive UsageType = "interactive"
 )
 
 // TeachingMaterial 教学素材主模型
