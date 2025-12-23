@@ -1,0 +1,140 @@
+# Future Education MCP Server Configuration Template
+# Copy this file to config.yaml and update the values according to your environment
+
+# Server Configuration
+server:
+  host: "0.0.0.0"
+  port: 8080
+  mode: "debug"  # debug/release
+  read_timeout: 30
+  write_timeout: 30
+
+# Database Configuration
+database:
+  host: "localhost"
+  port: 5432
+  user: "future_mcp"
+  password: "your_password_here"
+  dbname: "future_mcp"
+  sslmode: "disable"
+  max_idle_conns: 10
+  max_open_conns: 100
+  conn_max_lifetime: 3600
+
+# Redis Configuration
+redis:
+  host: "localhost:6379"
+  password: ""
+  db: 0
+  pool_size: 10
+  min_idle_conns: 2
+  conn_max_lifetime: 3600
+
+# Authentication Configuration
+auth:
+  jwt_secret: "your-super-secret-jwt-key-change-this-in-production"
+  jwt_expire: 86400  # 24 hours in seconds
+  api_key_header: "X-API-Key"
+  enable_api_keys: true
+
+# Vector Search Configuration
+vector_search:
+  provider: "pinecone"  # pinecone/weaviate/qdrant/milvus
+  api_key: "your-pinecone-api-key"
+  environment: "us-east-1"
+  index_name: "future-materials"
+  dimension: 768
+  metric: "cosine"  # cosine/euclidean/dotproduct
+  cloud: "aws"
+
+# Storage Configuration
+storage:
+  provider: "local"  # local/s3/cos/oss
+  bucket: "future-materials"
+  region: "us-east-1"
+  endpoint: ""
+  access_key: "your-access-key"
+  secret_key: "your-secret-key"
+  use_ssl: true
+  local_path: "./storage"
+
+# Logging Configuration
+log:
+  level: "info"  # debug/info/warn/error
+  format: "json"  # json/text
+  output: "stdout"  # stdout/file
+  file_path: "./logs/future-mcp.log"
+  max_size: 100  # MB
+  max_age: 30    # days
+  max_backups: 10
+  compress: true
+
+# Rate Limiting Configuration
+rate_limit:
+  enabled: true
+  requests_per_minute: 60
+  burst_size: 10
+
+# Cache Configuration
+cache:
+  default_ttl: 3600  # 1 hour
+  material_ttl: 1800 # 30 minutes
+  user_ttl: 3600     # 1 hour
+  search_ttl: 300    # 5 minutes
+
+# Monitoring Configuration
+monitoring:
+  enabled: true
+  metrics_port: 9090
+  enable_tracing: false
+  jaeger_endpoint: "http://localhost:14268/api/traces"
+  service_name: "future-mcp-server"
+
+# Third-party Integrations
+integrations:
+  pinecone:
+    enabled: true
+    api_key: "your-pinecone-api-key"
+    environment: "us-east-1"
+
+  weaviate:
+    enabled: false
+    url: "http://localhost:8080"
+    api_key: ""
+
+  qdrant:
+    enabled: false
+    url: "http://localhost:6334"
+    api_key: ""
+
+# Feature Flags
+features:
+  enable_vector_search: true
+  enable_recommendations: true
+  enable_analytics: true
+  enable_caching: true
+  enable_rate_limiting: true
+  enable_mcp_protocol: true
+  enable_websocket: false
+
+# Security Configuration
+security:
+  cors:
+    enabled: true
+    allowed_origins: ["*"]
+    allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    allowed_headers: ["*"]
+    allow_credentials: true
+    max_age: 86400
+
+  helmet:
+    enabled: true
+    content_security_policy: "default-src 'self'"
+    hide_powered_by: true
+
+# Development Configuration
+development:
+  enable_swagger: true
+  enable_pprof: true
+  enable_debug_routes: true
+  auto_migrate: true

@@ -1,0 +1,38 @@
+[Unit]
+Description=TALink MCP Server (未链MCP服务器)
+After=network.target postgresql.service redis.service
+Requires=postgresql.service redis.service
+
+[Service]
+Type=simple
+User=talink
+Group=talink
+WorkingDirectory=/opt/talink-mcp-server
+ExecStart=/opt/talink-mcp-server/future-mcp-server
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=always
+RestartSec=5
+Environment=CONFIG_FILE=/opt/talink-mcp-server/config/config.yaml
+Environment=LOG_LEVEL=info
+
+# 安全设置
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/opt/talink-mcp-server/logs /opt/talink-mcp-server/storage
+ProtectHome=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+
+# 资源限制
+LimitNOFILE=65536
+MemoryLimit=1G
+
+# 日志
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=talink-mcp-server
+
+[Install]
+WantedBy=multi-user.target
