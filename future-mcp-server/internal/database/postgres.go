@@ -53,9 +53,9 @@ func InitDB() (*gorm.DB, error) {
 	sqlDB.SetConnMaxLifetime(time.Duration(viper.GetInt("database.conn_max_lifetime")) * time.Second)
 
 	logger.Info("Database connected successfully",
-		logger.Field("host", viper.GetString("database.host")),
-		logger.Field("port", viper.GetInt("database.port")),
-		logger.Field("database", viper.GetString("database.dbname")),
+		logger.Any("host", viper.GetString("database.host")),
+		logger.Any("port", viper.GetInt("database.port")),
+		logger.Any("database", viper.GetString("database.dbname")),
 	)
 
 	return DB, nil
@@ -141,10 +141,10 @@ func Migrate(models ...interface{}) error {
 
 	for _, model := range models {
 		if err := DB.AutoMigrate(model); err != nil {
-			logger.Error("Failed to migrate model", logger.Field("model", fmt.Sprintf("%T", model)), logger.Error(err))
+			logger.Error("Failed to migrate model", logger.Any("model", fmt.Sprintf("%T", model)), logger.Any("error", err.Error()))
 			return fmt.Errorf("failed to migrate %T: %w", model, err)
 		}
-		logger.Info("Model migrated successfully", logger.Field("model", fmt.Sprintf("%T", model)))
+		logger.Info("Model migrated successfully", logger.Any("model", fmt.Sprintf("%T", model)))
 	}
 
 	return nil
@@ -163,8 +163,7 @@ func WithContext(ctx context.Context) *gorm.DB {
 // GormWriter GORM日志写入器
 type GormWriter struct{}
 
-// Write 实现io.Writer接口
-func (w *GormWriter) Write(p []byte) (int, error) {
-	logger.Info(string(p))
-	return len(p), nil
+// Printf 实现gorm logger.Writer接口
+func (w *GormWriter) Printf(format string, args ...interface{}) {
+	logger.Info(fmt.Sprintf(format, args...))
 }

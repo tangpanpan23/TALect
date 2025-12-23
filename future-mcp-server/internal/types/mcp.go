@@ -14,7 +14,7 @@ const MCPProtocolVersion = "2024-11-05"
 
 // MCPMessage MCP消息基础结构
 type MCPMessage struct {
-	JSONRPC string `json:"jsonrpc" binding:"required,eq=2.0"`
+	JSONRPC string `json:"jsonrpc" binding:"required"`
 	ID      interface{} `json:"id,omitempty"` // string | number | null
 }
 
@@ -346,4 +346,18 @@ type RecommendationResult struct {
 	Algorithm     string             `json:"algorithm"`
 	Confidence    float64            `json:"confidence"`
 	Reason        string             `json:"reason"`
+}
+
+// VectorSearchResult 向量搜索结果
+type VectorSearchResult struct {
+	ID       string                 `json:"id"`
+	Score    float64                `json:"score"`
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+}
+
+// VectorRecord 向量记录
+type VectorRecord struct {
+	ID       string                 `json:"id"`
+	Vector   []float32              `json:"vector"`
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
 }

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/spf13/viper"
@@ -14,9 +13,6 @@ import (
 
 // Logger 全局日志实例
 var Logger *zap.Logger
-
-// Field 日志字段构造器
-type Field = zap.Field
 
 // 日志级别常量
 const (
@@ -94,48 +90,48 @@ func Init() error {
 }
 
 // Debug 调试日志
-func Debug(msg string, fields ...Field) {
+func Debug(msg string, fields ...zap.Field) {
 	Logger.Debug(msg, fields...)
 }
 
 // Info 信息日志
-func Info(msg string, fields ...Field) {
+func Info(msg string, fields ...zap.Field) {
 	Logger.Info(msg, fields...)
 }
 
 // Warn 警告日志
-func Warn(msg string, fields ...Field) {
+func Warn(msg string, fields ...zap.Field) {
 	Logger.Warn(msg, fields...)
 }
 
 // Error 错误日志
-func Error(msg string, fields ...Field) {
+func Error(msg string, fields ...zap.Field) {
 	Logger.Error(msg, fields...)
 }
 
 // Fatal 致命错误日志
-func Fatal(msg string, fields ...Field) {
+func Fatal(msg string, fields ...zap.Field) {
 	Logger.Fatal(msg, fields...)
 }
 
 // WithContext 创建带有上下文的logger
 func WithContext(ctx interface{}) *zap.Logger {
-	return Logger.With(Field("context", ctx))
+	return Logger.With(Any("context", ctx))
 }
 
 // WithUser 创建带有用户信息的logger
 func WithUser(userID interface{}) *zap.Logger {
-	return Logger.With(Field("user_id", userID))
+	return Logger.With(Any("user_id", userID))
 }
 
 // WithRequest 创建带有请求信息的logger
 func WithRequest(requestID string) *zap.Logger {
-	return Logger.With(Field("request_id", requestID))
+	return Logger.With(Any("request_id", requestID))
 }
 
 // WithSession 创建带有会话信息的logger
 func WithSession(sessionID string) *zap.Logger {
-	return Logger.With(Field("session_id", sessionID))
+	return Logger.With(Any("session_id", sessionID))
 }
 
 // RequestLogger 请求日志记录器
@@ -153,10 +149,10 @@ func NewRequestLogger(requestID string) *RequestLogger {
 // LogRequest 记录请求
 func (rl *RequestLogger) LogRequest(method, path, userAgent, ip string) {
 	rl.logger.Info("request started",
-		Field("method", method),
-		Field("path", path),
-		Field("user_agent", userAgent),
-		Field("ip", ip),
+		Any("method", method),
+		Any("path", path),
+		Any("user_agent", userAgent),
+		Any("ip", ip),
 	)
 }
 
@@ -171,9 +167,9 @@ func (rl *RequestLogger) LogResponse(statusCode int, duration time.Duration, siz
 	}
 
 	rl.logger.Log(level, "request completed",
-		Field("status_code", statusCode),
-		Field("duration_ms", duration.Milliseconds()),
-		Field("response_size", size),
+		Any("status_code", statusCode),
+		Any("duration_ms", duration.Milliseconds()),
+		Any("response_size", size),
 	)
 }
 
@@ -192,24 +188,24 @@ func NewMCPLogger(requestID string) *MCPLogger {
 // LogMCPRequest 记录MCP请求
 func (ml *MCPLogger) LogMCPRequest(method string, params interface{}) {
 	ml.logger.Info("mcp request",
-		Field("method", method),
-		Field("params", fmt.Sprintf("%+v", params)),
+		Any("method", method),
+		Any("params", fmt.Sprintf("%+v", params)),
 	)
 }
 
 // LogMCPResponse 记录MCP响应
 func (ml *MCPLogger) LogMCPResponse(result interface{}, duration time.Duration) {
 	ml.logger.Info("mcp response",
-		Field("duration_ms", duration.Milliseconds()),
-		Field("result", fmt.Sprintf("%+v", result)),
+		Any("duration_ms", duration.Milliseconds()),
+		Any("result", fmt.Sprintf("%+v", result)),
 	)
 }
 
 // LogMCPError 记录MCP错误
 func (ml *MCPLogger) LogMCPError(err error, code int) {
 	ml.logger.Error("mcp error",
-		Field("error", err.Error()),
-		Field("code", code),
+		Any("error", err.Error()),
+		Any("code", code),
 	)
 }
 
@@ -222,8 +218,8 @@ type ToolLogger struct {
 func NewToolLogger(toolName, requestID string) *ToolLogger {
 	return &ToolLogger{
 		logger: Logger.With(
-			Field("tool", toolName),
-			Field("request_id", requestID),
+			Any("tool", toolName),
+			Any("request_id", requestID),
 		),
 	}
 }
@@ -231,61 +227,61 @@ func NewToolLogger(toolName, requestID string) *ToolLogger {
 // LogToolExecution 记录工具执行
 func (tl *ToolLogger) LogToolExecution(args interface{}, startTime time.Time) {
 	tl.logger.Info("tool execution started",
-		Field("args", fmt.Sprintf("%+v", args)),
-		Field("start_time", startTime),
+		Any("args", fmt.Sprintf("%+v", args)),
+		Any("start_time", startTime),
 	)
 }
 
 // LogToolResult 记录工具结果
 func (tl *ToolLogger) LogToolResult(result interface{}, duration time.Duration) {
 	tl.logger.Info("tool execution completed",
-		Field("duration_ms", duration.Milliseconds()),
-		Field("result", fmt.Sprintf("%+v", result)),
+		Any("duration_ms", duration.Milliseconds()),
+		Any("result", fmt.Sprintf("%+v", result)),
 	)
 }
 
 // LogToolError 记录工具错误
 func (tl *ToolLogger) LogToolError(err error, duration time.Duration) {
 	tl.logger.Error("tool execution failed",
-		Field("error", err.Error()),
-		Field("duration_ms", duration.Milliseconds()),
+		Any("error", err.Error()),
+		Any("duration_ms", duration.Milliseconds()),
 	)
 }
 
 // 便捷字段构造器
-func Field(key string, value interface{}) Field {
+func Any(key string, value interface{}) zap.Field {
 	return zap.Any(key, value)
 }
 
-func String(key, value string) Field {
+func String(key, value string) zap.Field {
 	return zap.String(key, value)
 }
 
-func Int(key string, value int) Field {
+func Int(key string, value int) zap.Field {
 	return zap.Int(key, value)
 }
 
-func Int64(key string, value int64) Field {
+func Int64(key string, value int64) zap.Field {
 	return zap.Int64(key, value)
 }
 
-func Float64(key string, value float64) Field {
+func Float64(key string, value float64) zap.Field {
 	return zap.Float64(key, value)
 }
 
-func Bool(key string, value bool) Field {
+func Bool(key string, value bool) zap.Field {
 	return zap.Bool(key, value)
 }
 
-func Error(err error) Field {
+func Err(err error) zap.Field {
 	return zap.Error(err)
 }
 
-func Duration(key string, value time.Duration) Field {
+func Duration(key string, value time.Duration) zap.Field {
 	return zap.Duration(key, value)
 }
 
-func Time(key string, value time.Time) Field {
+func Time(key string, value time.Time) zap.Field {
 	return zap.Time(key, value)
 }
 

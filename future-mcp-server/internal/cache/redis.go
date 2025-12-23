@@ -39,9 +39,9 @@ func InitRedis() (*redis.Client, error) {
 	}
 
 	logger.Info("Redis connected successfully",
-		logger.Field("host", host),
-		logger.Field("db", db),
-		logger.Field("pool_size", poolSize),
+		logger.Any("host", host),
+		logger.Any("db", db),
+		logger.Any("pool_size", poolSize),
 	)
 
 	return RedisClient, nil
@@ -80,6 +80,7 @@ type Cache interface {
 	Exists(ctx context.Context, key string) bool
 	Expire(ctx context.Context, key string, expiration time.Duration) error
 	TTL(ctx context.Context, key string) (time.Duration, error)
+	SetJSON(ctx context.Context, key string, value interface{}, ttl time.Duration) error
 }
 
 // RedisCache Redis缓存实现
@@ -148,13 +149,13 @@ func (c *RedisCache) GetJSON(ctx context.Context, key string, dest interface{}) 
 }
 
 // SetJSON 设置JSON格式的缓存值
-func (c *RedisCache) SetJSON(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
+func (c *RedisCache) SetJSON(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
 	data, err := json.Marshal(value)
 	if err != nil {
 		return fmt.Errorf("failed to marshal value: %w", err)
 	}
 
-	return c.Set(ctx, key, string(data), expiration)
+	return c.Set(ctx, key, string(data), ttl)
 }
 
 // CacheKey 缓存键生成器

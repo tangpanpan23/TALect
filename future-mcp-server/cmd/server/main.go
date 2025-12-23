@@ -10,15 +10,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/future-mcp/future-mcp-server/internal/auth"
-	"github.com/future-mcp/future-mcp-server/internal/cache"
-	"github.com/future-mcp/future-mcp-server/internal/database"
 	"github.com/future-mcp/future-mcp-server/internal/handler"
 	"github.com/future-mcp/future-mcp-server/internal/middleware"
 	"github.com/future-mcp/future-mcp-server/internal/repository"
 	"github.com/future-mcp/future-mcp-server/internal/service"
 	"github.com/future-mcp/future-mcp-server/pkg/logger"
-	"github.com/future-mcp/future-mcp-server/pkg/mcp"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 )
@@ -34,42 +30,39 @@ func main() {
 		log.Fatalf("Failed to initialize logger: %v", err)
 	}
 
-	logger.Info("Starting Future Education MCP Server...")
+	logger.Info("Starting TALink MCP Server...")
 
-	// 初始化数据库
-	db, err := database.InitDB()
-	if err != nil {
-		logger.Fatal("Failed to initialize database", logger.Field("error", err))
+	// 初始化缓存服务 (暂时使用内存实现)
+	cacheService := service.NewMemoryCacheService()
+
+	// 初始化存储库 (暂时使用内存实现)
+	materialRepo := repository.NewMemoryMaterialRepository()
+	// TODO: 实现其他仓库
+	repos := &repository.Repositories{
+		Material: materialRepo,
 	}
 
-	// 初始化Redis缓存
-	redisClient, err := cache.InitRedis()
-	if err != nil {
-		logger.Fatal("Failed to initialize Redis", logger.Field("error", err))
-	}
+	// 认证服务暂时未实现
+	// authService := auth.NewService(viper.GetString("auth.jwt_secret"))
 
-	// 初始化存储库
-	repos := repository.NewRepositories(db)
-
-	// 初始化认证服务
-	authService := auth.NewService(viper.GetString("auth.jwt_secret"))
-
-	// 初始化业务服务
-	services := service.NewServices(service.ServiceDeps{
-		Repos:       repos,
-		Cache:       redisClient,
-		AuthService: authService,
-	})
+	// 初始化素材服务
+	materialService := service.NewMaterialService(repos.Material, cacheService)
 
 	// 初始化MCP服务
-	mcpService := mcp.NewService(mcp.ServiceConfig{
-		MaterialService: services.Material,
-		ToolService:     services.Tool,
-		ResourceService: services.Resource,
+	mcpService := service.NewMCPService(&service.MCPServiceConfig{
+		MaterialService: materialService,
 	})
 
+	// 初始化工具服务
+	toolService := service.NewToolService(mcpService)
+
+	// 设置工具服务的MCP引用
+	if ts, ok := toolService.(*service.ToolServiceImpl); ok {
+		ts.SetMCPService(mcpService)
+	}
+
 	// 初始化Gin路由
-	r := setupRouter(services, authService, mcpService)
+	r := setupRouter(mcpService)
 
 	// 获取服务器配置
 	host := viper.GetString("server.host")
@@ -85,9 +78,9 @@ func main() {
 
 	// 启动服务器
 	go func() {
-		logger.Info("Server starting", logger.Field("addr", addr))
+		logger.Info("Server starting", logger.Any("addr", addr))
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Fatal("Failed to start server", logger.Field("error", err))
+			logger.Fatal("Failed to start server", logger.Any("error", err))
 		}
 	}()
 
@@ -101,7 +94,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
-		logger.Fatal("Server forced to shutdown", logger.Field("error", err))
+		logger.Fatal("Server forced to shutdown", logger.Any("error", err))
 	}
 
 	logger.Info("Server exited")
@@ -174,7 +167,7 @@ func setDefaults() {
 	viper.SetDefault("log.output", "stdout")
 }
 
-func setupRouter(services *service.Services, authService *auth.Service, mcpService *mcp.Service) *gin.Engine {
+func setupRouter(mcpService *service.MCPService) *gin.Engine {
 	if viper.GetString("server.mode") == "release" {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -192,36 +185,25 @@ func setupRouter(services *service.Services, authService *auth.Service, mcpServi
 	r.GET("/health", handler.HealthCheck)
 	r.GET("/ready", handler.ReadinessCheck)
 
-	// API v1 路由组
-	v1 := r.Group("/api/v1")
-	v1.Use(middleware.AuthRequired(authService))
+	// API v1 路由组 (暂时简化)
+	// v1 := r.Group("/api/v1")
+	// v1.Use(middleware.AuthRequired(authService)) // 暂时移除认证
 
-	// 素材相关路由
-	materials := v1.Group("/materials")
-	{
-		materials.POST("/search", handler.SearchMaterials(services.Material))
-		materials.GET("/:id", handler.GetMaterialDetail(services.Material))
-		materials.GET("/:id/related", handler.GetRelatedMaterials(services.Material))
-		materials.POST("/:id/analyze", handler.AnalyzeMaterial(services.Material))
-	}
-
-	// 用户相关路由
-	users := v1.Group("/users")
-	{
-		users.GET("/profile", handler.GetUserProfile(services.User))
-		users.PUT("/profile", handler.UpdateUserProfile(services.User))
-		users.GET("/quota", handler.GetUserQuota(services.User))
-	}
+	// 素材相关路由 (暂时简化)
+	// materials := v1.Group("/materials")
+	// {
+	// 	materials.POST("/search", handler.SearchMaterials(services.Material))
+	// }
 
 	// MCP协议路由
 	mcpGroup := r.Group("/mcp")
 	{
-		mcpGroup.POST("/sse", mcpService.HandleSSE)
-		mcpGroup.POST("/jsonrpc", mcpService.HandleJSONRPC)
+		mcpGroup.POST("/jsonrpc", handler.MCPHandler(mcpService))
+		mcpGroup.GET("/sse", handler.MCPSSEHandler(mcpService))
 	}
 
 	// WebSocket路由（用于实时通信）
-	r.GET("/ws", handler.WebSocketHandler(services))
+	// r.GET("/ws", handler.WebSocketHandler(services)) // 暂时移除
 
 	return r
 }
