@@ -13,6 +13,7 @@
 - 📚 **独家内容**: 整合好未来20年精品教育内容资源
 - 🤖 **AI教育技术**: 结合个性化学习算法和大数据能力
 - 🌍 **生态开放**: 打造教育AI内容服务平台
+- 🏗️ **生产就绪**: 内置监控、日志、链路追踪、限流熔断等企业级功能
 
 ## 📋 核心功能
 
@@ -49,7 +50,7 @@ go mod download
 
 ```bash
 # 复制配置文件模板
-cp config/config.example.yaml config/config.yaml
+cp etc/talink.yaml etc/talink-local.yaml
 
 # 编辑配置文件，设置数据库和Redis连接信息
 ```
@@ -57,8 +58,8 @@ cp config/config.example.yaml config/config.yaml
 ### 运行服务器
 
 ```bash
-# 开发模式
-go run cmd/server/main.go
+# 使用 go-zero 配置文件运行
+go run cmd/server/main.go -f etc/talink.yaml
 
 # 或使用Makefile
 make dev

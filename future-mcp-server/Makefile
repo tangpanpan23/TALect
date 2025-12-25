@@ -6,10 +6,10 @@
 .DEFAULT_GOAL := help
 
 # 变量定义
-BINARY_NAME=future-mcp-server
+BINARY_NAME=talink-mcp-server
 BUILD_DIR=./build
-CONFIG_FILE=./config/config.yaml
-DOCKER_IMAGE=future-mcp-server
+CONFIG_FILE=./etc/talink.yaml
+DOCKER_IMAGE=talink-mcp-server
 DOCKER_TAG=latest
 
 # 帮助信息

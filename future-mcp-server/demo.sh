@@ -21,7 +21,7 @@ if curl -s http://localhost:8080/health > /dev/null; then
     echo -e "${GREEN}✅ 服务器运行正常${NC}"
 else
     echo -e "${RED}❌ 服务器未运行，请先启动服务器${NC}"
-    echo "运行: cd future-mcp-server && go run cmd/server/main.go"
+    echo "运行: cd future-mcp-server && ./server -f etc/talink.yaml"
     exit 1
 fi
 

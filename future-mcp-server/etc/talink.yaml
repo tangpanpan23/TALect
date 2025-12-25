@@ -1,0 +1,44 @@
+Name: talink-mcp-server
+Host: 0.0.0.0
+Port: 8080
+Timeout: 30000
+CpuThreshold: 500
+
+Log:
+  ServiceName: talink-mcp-server
+  Level: info
+  Mode: file
+  Path: logs
+  KeepDays: 7
+
+Database:
+  Host: localhost
+  Port: 5432
+  User: future_mcp
+  Password: password
+  Dbname: future_mcp
+  Sslmode: disable
+  MaxIdleConns: 10
+  MaxOpenConns: 100
+
+Redis:
+  Host: localhost:6379
+  Password: ""
+  Db: 0
+  PoolSize: 10
+
+Auth:
+  JwtSecret: your-jwt-secret-key
+  JwtExpire: 86400
+
+VectorSearch:
+  Provider: pinecone
+  ApiKey: ""
+  Environment: us-east-1
+  IndexName: future-materials
+  Dimension: 768
+
+Storage:
+  Provider: local
+  Bucket: future-materials
+  Region: us-east-1

@@ -46,6 +46,11 @@ type MCPError struct {
 	Data    interface{} `json:"data,omitempty"`
 }
 
+// Error 实现 error 接口
+func (e *MCPError) Error() string {
+	return e.Message
+}
+
 // MCP错误码
 const (
 	MCPParseError     = -32700
